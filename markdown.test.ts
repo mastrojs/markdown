@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert"
+import { assertEquals } from "jsr:@std/assert"
 import { markdownToHtml } from "./markdown.ts";
 
 Deno.test("markdownToHtml", () => {
