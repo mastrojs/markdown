@@ -26,7 +26,7 @@ const { content, meta } = markdownToHtml(`
 title: my title
 ---
 
-hi *there*"
+hi *there*
 `),
 ```
 

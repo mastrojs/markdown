@@ -74,6 +74,9 @@ export const readMarkdownFiles = async (
  * ```js
  * readMarkdownFileInFolder("data", "/guide/hello-world/"); // reads data/guide/hello-world.md
  * readMarkdownFileInFolder("data", "/"); // reads data/index.md
+ *
+ * const { pathname } = new URL(req.url);
+ * const { content, meta } = await readMarkdownFileInFolder("data", pathname);
  * ```
  *
  * Unless a `mdToHtml` function is passed, `micromark` is used to parse GFM with YAML frontmatter.
