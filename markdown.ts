@@ -4,7 +4,7 @@
  * @module
  */
 
-import { findFiles, readTextFile, type Html, unsafeInnerHtml } from "@mastrojs/mastro";
+import { findFiles, type Html, readTextFile, unsafeInnerHtml } from "@mastrojs/mastro";
 import jsYaml from "js-yaml";
 import { micromark, type Options } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
@@ -68,13 +68,19 @@ export const readMarkdownFiles = async (
 };
 
 /**
- * Read a nested file from a `folder` on the local filesystem and
- * convert its markdown contents to an `Html` node and an object for the metadata.
+ * Read a single markdown file, potentially deeply nested in `folder` on the local filesystem,
+ * and convert its contents to an `Html` node and an object for the metadata.
  *
  * ```js
- * readMarkdownFileInFolder("data", "/guide/hello-world/"); // reads data/guide/hello-world.md
+ * readMarkdownFileInFolder("data", "/blog/hello-world/"); // reads data/blog/hello-world.md
  * readMarkdownFileInFolder("data", "/"); // reads data/index.md
+ * ```
  *
+ * Intended use-case is to serve a nested folder structure with markdown files.
+ * Place the following in e.g. `routes/[...slug].server.js` and make sure you access
+ * the route with URLs having a trailing slash.
+ *
+ * ```js
  * const { pathname } = new URL(req.url);
  * const { content, meta } = await readMarkdownFileInFolder("data", pathname);
  * ```
@@ -86,13 +92,22 @@ export const readMarkdownFileInFolder = async (
   path: string,
   mdToHtml: (md: string) => Promise<Md> | Md = markdownToHtml,
 ): Promise<Md> => {
+  if (!path.endsWith("/")) {
+    const err = Error("NotFound: path must end with a /");
+    err.name = "NotFound";
+    throw err;
+  }
+  path = path.slice(0, -1);
   path = path.startsWith("/") ? path : "/" + path;
-  path = path.endsWith("/") ? path.slice(0, -1) : path;
   let txt;
   try {
     txt = await readTextFile(folder + path + ".md");
-  } catch {
-    txt = await readTextFile(folder + path + "/index.md");
+  } catch (e: unknown) {
+    if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+      txt = await readTextFile(folder + path + "/index.md");
+    } else {
+      throw e;
+    }
   }
   return mdToHtml(txt);
 };
@@ -105,7 +120,7 @@ export const readMarkdownFileInFolder = async (
  */
 export const parseYamlFrontmatter = (
   md: string,
-): { body: string; meta: Record<string, string>} => {
+): { body: string; meta: Record<string, string> } => {
   let meta = {};
   let body = md;
   const results = yamlFrontRe.exec(md);
