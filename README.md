@@ -15,6 +15,10 @@ Uses `micromark` with `micromark-extension-gfm` under the hood.
 
     pnpm add jsr:@mastrojs/markdown
 
+### Bun
+
+    bunx jsr add @mastrojs/markdown
+
 
 ## Usage
 
