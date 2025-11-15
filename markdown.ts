@@ -12,12 +12,14 @@ import { gfm, gfmHtml } from "micromark-extension-gfm";
 // from https://github.com/dworthen/js-yaml-front-matter/blob/master/src/index.js#L14
 const yamlFrontRe = /^(-{3}(?:\n|\r)([\w\W]+?)(?:\n|\r)-{3})?([\w\W]*)*/;
 
+export type Meta = Record<string, string | number | boolean | undefined | null>;
+
 /**
  * Return type containing the generated HTML and the YAML metadata.
  */
 export interface Md {
   content: Html;
-  meta: Record<string, string>;
+  meta: Meta;
 }
 
 /**
@@ -152,7 +154,7 @@ export const serveMarkdownFolder = (
  */
 export const parseYamlFrontmatter = (
   md: string,
-): { body: string; meta: Record<string, string> } => {
+): { body: string; meta: Meta } => {
   let meta = {};
   let body = md;
   const results = yamlFrontRe.exec(md);
