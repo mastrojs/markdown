@@ -17,7 +17,7 @@ const yamlFrontRe = /^(-{3}(?:\n|\r)([\w\W]+?)(?:\n|\r)-{3})?([\w\W]*)*/;
  */
 export interface Md {
   content: Html;
-  meta: Record<string, string>;
+  meta: Record<string, string | undefined>;
 }
 
 /**
@@ -152,7 +152,7 @@ export const serveMarkdownFolder = (
  */
 export const parseYamlFrontmatter = (
   md: string,
-): { body: string; meta: Record<string, string> } => {
+): { body: string; meta: Record<string, string | undefined> } => {
   let meta = {};
   let body = md;
   const results = yamlFrontRe.exec(md);
