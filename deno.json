@@ -1,8 +1,11 @@
 {
   "name": "@mastrojs/markdown",
-  "version": "0.1.2",
+  "version": "0.1.4",
+  "tasks": {
+    "publish": "deno test --allow-env && deno publish"
+  },
   "fmt": {
-    "lineWidth": 90
+    "lineWidth": 100
   },
   "exports": {
     ".": "./markdown.ts"
