@@ -2,7 +2,9 @@
 
 A few simple helper functions to generate HTML from markdown. Just enough to get you started with markdown with [Mastro](https://mastrojs.github.io/).
 
-Uses `micromark` with `micromark-extension-gfm` under the hood.
+By default, it uses `micromark` with `micromark-extension-gfm` under the hood.
+
+Validate YAML frontmatter by bringing your own [Standard Schema](https://standardschema.dev/)-compliant validation library (e.g. [Zod](https://zod.dev), [Valibot](https://valibot.dev) or [validate.js](https://github.com/jakelazaroff/validate.js)).
 
 
 ## Install
@@ -25,7 +27,7 @@ Uses `micromark` with `micromark-extension-gfm` under the hood.
 ```ts
 import { markdownToHtml } from "@mastrojs/markdown";
 
-const { content, meta } = markdownToHtml(`
+const { content, meta } = await markdownToHtml(`
 ---
 title: my title
 ---

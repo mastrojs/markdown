@@ -1,9 +1,9 @@
 import { assertEquals } from "jsr:@std/assert"
 import { markdownToHtml } from "./markdown.ts";
 
-Deno.test("markdownToHtml", () => {
+Deno.test("markdownToHtml", async () => {
   assertEquals(
-    markdownToHtml("hi *there*"),
+    await markdownToHtml("hi *there*"),
     {
       content: new String("<p>hi <em>there</em></p>"),
       meta: {},
@@ -11,7 +11,7 @@ Deno.test("markdownToHtml", () => {
   );
 
   assertEquals(
-    markdownToHtml("---\ntitle: go\n---\nhi *there*"),
+    await markdownToHtml("---\ntitle: go\n---\nhi *there*"),
     {
       content: new String("<p>hi <em>there</em></p>"),
       meta: { title: "go" },

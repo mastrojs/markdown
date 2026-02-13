@@ -1,67 +1,75 @@
 /**
  * Module with helper function to generate HTML from markdown.
- * Uses `micromark` with `micromark-extension-gfm` under the hood.
+ * By default, it uses `micromark` with `micromark-extension-gfm`.
  * @module
  */
 
 import { findFiles, type Html, readTextFile, unsafeInnerHtml } from "@mastrojs/mastro";
 import jsYaml from "js-yaml";
-import { micromark, type Options } from "micromark";
+import { micromark, type Options as MicromarkOpts } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
+import type { StandardSchemaV1 } from "./standard-schema.ts";
 
-// from https://github.com/dworthen/js-yaml-front-matter/blob/master/src/index.js#L14
-const yamlFrontRe = /^(-{3}(?:\n|\r)([\w\W]+?)(?:\n|\r)-{3})?([\w\W]*)*/;
+export type { MicromarkOpts };
 
 /**
  * Return type containing the generated HTML and the YAML metadata.
  */
-export interface Md {
+export interface Md<M extends DefaultM = DefaultM> {
   content: Html;
-  meta: Record<string, string | undefined>;
+  meta: M;
 }
 
 /**
- * Convert a markdown string (GFM with YAML frontmatter metadata) to an `Html` node
- * and an object for the metadata.
+ * A custom markdown to HTML function to be used instead of `micromark` with GFM.
  */
-export const markdownToHtml = (md: string, opts?: Options): Md => {
-  const { body, meta } = parseYamlFrontmatter(md);
-  const content = unsafeInnerHtml(
-    micromark(body, {
-      extensions: [gfm()],
-      htmlExtensions: [gfmHtml()],
-      ...opts,
-    }),
-  );
-  return { content, meta };
-};
+export type MdToHtml = (md: string) => string | Promise<string>;
+
+/**
+ * A [Standard Schema](https://standardschema.dev/) to validate YAML frontmatter metadata
+ */
+export type MetaSchema<M> = StandardSchemaV1<unknown, M>;
+
+/**
+ * If no schema is provided, we fall back to this type
+ *
+ * We ues `unknown` instead of `string | number | boolean | Date | null | undefined>`
+ * because you could have deeply nested objects or arrays.
+ */
+export type DefaultM = Record<string, unknown>;
+
+/**
+ * Convert a markdown string (incl. YAML frontmatter metadata) to an `Html` node
+ * and an object for the metadata. Like the other exported functions, it optionally takes a
+ * `schema`, and a `mdToHtml` function to use instead of the default micromark with GFM.
+ */
+export const markdownToHtml = <M extends DefaultM = DefaultM>(
+  md: string,
+  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+): Promise<Md<M>> => parseMd(md, opts);
 
 /**
  * Read a file from the local filesystem and convert its markdown contents
  * to an `Html` node and an object for the metadata.
- *
- * Unless a `mdToHtml` function is passed, `micromark` is used to parse GFM with YAML frontmatter.
  */
-export const readMarkdownFile = async (
+export const readMarkdownFile = async <M extends DefaultM = DefaultM>(
   path: string,
-  mdToHtml: (md: string) => Promise<Md> | Md = markdownToHtml,
-): Promise<Md> => mdToHtml(await readTextFile(path));
+  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+): Promise<Md<M>> => parseMd(await readTextFile(path), opts, path);
 
 /**
  * Read all files from the local filesystem that match the supplied glob pattern,
  * (via `findFiles`) and convert their markdown contents to `Html` nodes and objects for their metadata.
- *
- * Unless a `mdToHtml` function is passed, `micromark` is used to parse GFM with YAML frontmatter.
  */
-export const readMarkdownFiles = async (
+export const readMarkdownFiles = async <M extends DefaultM = DefaultM>(
   pattern: string,
-  mdToHtml: (md: string) => Promise<Md> | Md = markdownToHtml,
-): Promise<Array<Md & { path: string }>> => {
+  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+): Promise<Array<Md<M> & { path: string }>> => {
   const paths = await findFiles(pattern);
   return Promise.all(
     paths.map(async (path, i) => {
       const file = await readTextFile(path);
-      const md = await mdToHtml(file);
+      const md = await parseMd(file, opts, path);
       return { path: paths[i], ...md };
     }),
   );
@@ -95,21 +103,19 @@ export const readMarkdownFiles = async (
  *
  * With the above example, the URL `/blog/hello-world/` will read out the file
  * `data/blog/hello-world.md`, and the URL `/` will read out the file `data/index.md`.
- *
- * Unless a `mdToHtml` function is passed as part of the first argument,
- * `micromark` is used to parse GFM with YAML frontmatter.
  */
-export const serveMarkdownFolder = (
+export const serveMarkdownFolder = <M extends DefaultM = DefaultM>(
   opts: {
     folder: string;
-    mdToHtml?: (md: string) => Promise<Md> | Md;
+    mdToHtml?: MicromarkOpts | MdToHtml;
+    schema?: MetaSchema<M>;
   },
-  renderFn: (convertedMd: Md, req: Request) => Promise<Response> | Response,
+  renderFn: (convertedMd: Md<M>, req: Request) => Promise<Response> | Response,
 ): {
   GET: (req: Request) => Promise<Response>;
   getStaticPaths: () => Promise<string[]>;
 } => {
-  const { folder, mdToHtml = markdownToHtml } = opts;
+  const { folder } = opts;
 
   const GET = async (req: Request) => {
     let { pathname } = new URL(req.url);
@@ -120,17 +126,19 @@ export const serveMarkdownFolder = (
     }
     pathname = pathname.slice(0, -1);
     pathname = pathname.startsWith("/") ? pathname : "/" + pathname;
+    let filePath = folder + pathname + ".md";
     let txt;
     try {
-      txt = await readTextFile(folder + pathname + ".md");
+      txt = await readTextFile(filePath);
     } catch (e: unknown) {
       if (e instanceof Error && "code" in e && e.code === "ENOENT") {
-        txt = await readTextFile(folder + pathname + "/index.md");
+        filePath = folder + pathname + "/index.md";
+        txt = await readTextFile(filePath);
       } else {
         throw e;
       }
     }
-    const converted = await mdToHtml(txt);
+    const converted = await parseMd(txt, opts, filePath);
     return renderFn(converted, req);
   };
 
@@ -145,16 +153,33 @@ export const serveMarkdownFolder = (
   return { GET, getStaticPaths };
 };
 
+const parseMd = async <M extends DefaultM = DefaultM>(
+  md: string,
+  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+  filePath?: string,
+) => {
+  const { mdToHtml, schema } = opts || {};
+  const { body, meta } = await parseYamlFrontmatter(md, schema, filePath);
+  const html = typeof mdToHtml === "function" ? await mdToHtml(body) : micromark(body, {
+    extensions: [gfm()],
+    htmlExtensions: [gfmHtml()],
+    ...mdToHtml,
+  });
+  return { content: unsafeInnerHtml(html), meta };
+};
+
 /**
  * Converts a string possibly containing yaml frontmatter to a `{ meta, body }` object.
  *
  * - `meta` is an object with the parsed yaml.
  * - `body` is a string with the rest of the input.
  */
-export const parseYamlFrontmatter = (
+const parseYamlFrontmatter = async <M extends DefaultM>(
   md: string,
-): { body: string; meta: Record<string, string | undefined> } => {
-  let meta = {};
+  schema?: MetaSchema<M>,
+  filePath?: string,
+): Promise<{ body: string; meta: M }> => {
+  let meta = {} as M;
   let body = md;
   const results = yamlFrontRe.exec(md);
   try {
@@ -167,7 +192,24 @@ export const parseYamlFrontmatter = (
       }
     }
   } catch (e) {
-    console.warn("Could not parse YAML", (e as Error).message);
+    const msg = `Could not parse YAML in ${filePath}: ${e}`;
+    if (schema) {
+      throw Error(msg, { cause: e });
+    } else {
+      console.warn(msg);
+    }
   }
-  return { body, meta };
+
+  if (schema) {
+    const res = await schema["~standard"].validate(meta);
+    if (res.issues) {
+      const issues = res.issues.map((i) => `${i.message} (${i.path})`);
+      throw Error(`YAML in ${filePath} did not validate:\n  ${issues.join("\n  ")}`);
+    }
+    meta = res.value;
+  }
+  return { meta, body };
 };
+
+// from https://github.com/dworthen/js-yaml-front-matter/blob/master/src/index.js#L14
+const yamlFrontRe = /^(-{3}(?:\n|\r)([\w\W]+?)(?:\n|\r)-{3})?([\w\W]*)*/;
