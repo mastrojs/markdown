@@ -136,8 +136,9 @@ export const serveMarkdownFolder = (
 
   const getStaticPaths = async () => {
     const files = await findFiles(folder + "/**/*.md");
+    const l = folder.length;
     return files.map((file) =>
-      file.endsWith("/index.md") ? file.slice(5, -8) : file.slice(5, -3) + "/"
+      file.endsWith("/index.md") ? file.slice(l, -8) : file.slice(l, -3) + "/"
     );
   };
 
