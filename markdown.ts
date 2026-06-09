@@ -5,7 +5,7 @@
  */
 
 import { findFiles, type Html, readTextFile, unsafeInnerHtml } from "@mastrojs/mastro";
-import jsYaml from "js-yaml";
+import { parse } from "@std/yaml";
 import { micromark, type Options as MicromarkOpts } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
 import type { StandardSchemaV1 } from "./standard-schema.ts";
@@ -185,10 +185,10 @@ const parseYamlFrontmatter = async <M extends DefaultM>(
   try {
     const yaml = results?.[2];
     if (yaml) {
-      const metaObj = jsYaml.load(yaml, { schema: jsYaml.JSON_SCHEMA });
-      if (typeof metaObj === "object" && !(metaObj instanceof Array)) {
+      const metaObj = parse(yaml, { schema: "json" });
+      if (metaObj && typeof metaObj === "object" && !(metaObj instanceof Array)) {
         body = results?.[3] || "";
-        meta = metaObj;
+        meta = metaObj as M;
       }
     }
   } catch (e) {
