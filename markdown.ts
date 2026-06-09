@@ -6,11 +6,11 @@
 
 import { findFiles, type Html, readTextFile, unsafeInnerHtml } from "@mastrojs/mastro";
 import { parse } from "@std/yaml";
-import { micromark, type Options as MicromarkOpts } from "micromark";
+import { micromark, type Options } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
 import type { StandardSchemaV1 } from "./standard-schema.ts";
 
-export type { MicromarkOpts };
+export type { Options };
 
 /**
  * Return type containing the generated HTML and the YAML metadata.
@@ -21,9 +21,10 @@ export interface Md<M extends DefaultM = DefaultM> {
 }
 
 /**
- * A custom markdown to HTML function to be used instead of `micromark` with GFM.
+ * [Micromark options](https://github.com/micromark/micromark/blob/main/packages/micromark/readme.md#options)
+ * or a custom markdown-to-HTML function to be used instead of the default `micromark` with GFM.
  */
-export type MdToHtml = (md: string) => string | Promise<string>;
+export type Parse = Options | ((md: string) => string | Promise<string>);
 
 /**
  * A [Standard Schema](https://standardschema.dev/) to validate YAML frontmatter metadata
@@ -31,7 +32,7 @@ export type MdToHtml = (md: string) => string | Promise<string>;
 export type MetaSchema<M> = StandardSchemaV1<unknown, M>;
 
 /**
- * If no schema is provided, we fall back to this type
+ * If no schema is provided, we fall back to this type for the metadata.
  *
  * We ues `unknown` instead of `string | number | boolean | Date | null | undefined>`
  * because you could have deeply nested objects or arrays.
@@ -45,7 +46,7 @@ export type DefaultM = Record<string, unknown>;
  */
 export const markdownToHtml = <M extends DefaultM = DefaultM>(
   md: string,
-  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+  opts?: { parse?: Parse; schema?: MetaSchema<M> },
 ): Promise<Md<M>> => parseMd(md, opts);
 
 /**
@@ -54,7 +55,7 @@ export const markdownToHtml = <M extends DefaultM = DefaultM>(
  */
 export const readMarkdownFile = async <M extends DefaultM = DefaultM>(
   path: string,
-  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+  opts?: { parse?: Parse; schema?: MetaSchema<M> },
 ): Promise<Md<M>> => parseMd(await readTextFile(path), opts, path);
 
 /**
@@ -63,7 +64,7 @@ export const readMarkdownFile = async <M extends DefaultM = DefaultM>(
  */
 export const readMarkdownFiles = async <M extends DefaultM = DefaultM>(
   pattern: string,
-  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+  opts?: { parse?: Parse; schema?: MetaSchema<M> },
 ): Promise<Array<Md<M> & { path: string }>> => {
   const paths = await findFiles(pattern);
   return Promise.all(
@@ -105,11 +106,7 @@ export const readMarkdownFiles = async <M extends DefaultM = DefaultM>(
  * `data/blog/hello-world.md`, and the URL `/` will read out the file `data/index.md`.
  */
 export const serveMarkdownFolder = <M extends DefaultM = DefaultM>(
-  opts: {
-    folder: string;
-    mdToHtml?: MicromarkOpts | MdToHtml;
-    schema?: MetaSchema<M>;
-  },
+  opts: { folder: string; parse?: Parse; schema?: MetaSchema<M> },
   renderFn: (convertedMd: Md<M>, req: Request) => Promise<Response> | Response,
 ): {
   GET: (req: Request) => Promise<Response>;
@@ -155,15 +152,15 @@ export const serveMarkdownFolder = <M extends DefaultM = DefaultM>(
 
 const parseMd = async <M extends DefaultM = DefaultM>(
   md: string,
-  opts?: { mdToHtml?: MicromarkOpts | MdToHtml; schema?: MetaSchema<M> },
+  opts?: { parse?: Parse; schema?: MetaSchema<M> },
   filePath?: string,
 ) => {
-  const { mdToHtml, schema } = opts || {};
+  const { parse, schema } = opts || {};
   const { body, meta } = await parseYamlFrontmatter(md, schema, filePath);
-  const html = typeof mdToHtml === "function" ? await mdToHtml(body) : micromark(body, {
+  const html = typeof parse === "function" ? await parse(body) : micromark(body, {
     extensions: [gfm()],
     htmlExtensions: [gfmHtml()],
-    ...mdToHtml,
+    ...parse,
   });
   return { content: unsafeInnerHtml(html), meta };
 };
