@@ -44,6 +44,8 @@ In addition to [`markdownToHtml(inputStr, opts)`](https://jsr.io/@mastrojs/markd
 
 ### Options
 
+#### Parse
+
 Use the `parse` option to supply either a [Micromark options object](https://github.com/micromark/micromark/blob/main/packages/micromark/readme.md#options):
 
 ```ts
@@ -57,7 +59,9 @@ import markdownIt from "markdown-it";
 markdownToHtml(input, { parse: markdownIt.render });
 ```
 
-Use a schema to validate the YAML frontmatter. For example using [validate.js](https://github.com/jakelazaroff/validate.js):
+#### Schema
+
+The default TypeScript type for the YAML metadata is `Record<string, unknown>`, but you can override that with e.g. `readMarkdownFile<{title: string}>("post.md")`. But to actually verify the metadata is correct, you should use a schema. For example using [validate.js](https://github.com/jakelazaroff/validate.js):
 
 ```ts
 import { object, string } from "./validate.js";
@@ -66,6 +70,8 @@ const schema = object({
 });
 const { content, meta } = await markdownToHtml(input, { schema }),
 ```
+
+### Docs
 
 To see all functions `@mastrojs/markdown` exports, see its [API docs](https://jsr.io/@mastrojs/markdown/doc).
 
