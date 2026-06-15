@@ -4,7 +4,7 @@
  * @module
  */
 
-import { findFiles, type Html, readTextFile, unsafeInnerHtml } from "@mastrojs/mastro";
+import { findFiles, type Html, readTextFile, unsafeInnerHtml, sep } from "@mastrojs/mastro";
 import { parse } from "@std/yaml";
 import { micromark, type Options } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
@@ -34,7 +34,7 @@ export type MetaSchema<M> = StandardSchemaV1<unknown, M>;
 /**
  * If no schema is provided, we fall back to this type for the metadata.
  *
- * We ues `unknown` instead of `string | number | boolean | Date | null | undefined>`
+ * We use `unknown` instead of `string | number | boolean | Date | null | undefined>`
  * because you could have deeply nested objects or arrays.
  */
 export type DefaultM = Record<string, unknown>;
@@ -59,19 +59,21 @@ export const readMarkdownFile = async <M extends DefaultM = DefaultM>(
 ): Promise<Md<M>> => parseMd(await readTextFile(path), opts, path);
 
 /**
- * Read all files from the local filesystem that match the supplied glob pattern,
- * (via `findFiles`) and convert their markdown contents to `Html` nodes and objects for their metadata.
+ * Read all files from the local filesystem that match the supplied glob pattern, (via `findFiles`)
+ * and convert their markdown contents to `Html` nodes and objects for their metadata.
+ * Filepath is in `path`, filename without suffix in `slug`.
  */
 export const readMarkdownFiles = async <M extends DefaultM = DefaultM>(
   pattern: string,
   opts?: { parse?: Parse; schema?: MetaSchema<M> },
-): Promise<Array<Md<M> & { path: string }>> => {
+): Promise<Array<Md<M> & { path: string, slug: string; }>> => {
   const paths = await findFiles(pattern);
   return Promise.all(
-    paths.map(async (path, i) => {
+    paths.map(async (path) => {
       const file = await readTextFile(path);
       const md = await parseMd(file, opts, path);
-      return { path: paths[i], ...md };
+      const slug = path.split(sep).at(-1)?.split(".").at(0) || "";
+      return { ...md, path, slug };
     }),
   );
 };

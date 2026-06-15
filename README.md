@@ -9,6 +9,8 @@ Validate YAML frontmatter by bringing your own [Standard Schema](https://standar
 
 ## Install
 
+The easiest way to get started is to [install Mastro](https://mastrojs.github.io/#powerful-for-experienced-developers) and select the "blog" template. Alternatively:
+
 ### Deno
 
     deno add jsr:@mastrojs/markdown
@@ -25,6 +27,7 @@ Validate YAML frontmatter by bringing your own [Standard Schema](https://standar
 ## Usage
 
 ```ts
+import { renderToString } from "@mastrojs";
 import { markdownToHtml } from "@mastrojs/markdown";
 
 const { content, meta } = await markdownToHtml(`
@@ -33,14 +36,18 @@ title: my title
 ---
 
 hi *there*
-`),
+`);
+
+const htmlStr = await renderToString(content);
 ```
 
-In addition to [`markdownToHtml(inputStr, opts)`](https://jsr.io/@mastrojs/markdown/doc/~/markdownToHtml), there are utility functions for use with Mastro:
+In addition to [`markdownToHtml(inputStr, opts)`](https://jsr.io/@mastrojs/markdown/doc/~/markdownToHtml), there is:
 
 - [`readMarkdownFile(filePath, opts)`](https://jsr.io/@mastrojs/markdown/doc/~/readMarkdownFile)
 - [`readMarkdownFiles(globPattern, opts)`](https://jsr.io/@mastrojs/markdown/doc/~/readMarkdownFiles)
 - [`serveMarkdownFolder(opts, renderFn)`](https://jsr.io/@mastrojs/markdown/doc/~/serveMarkdownFolder)
+
+For a tutorial, read the chapter [A static blog from markdown files](https://mastrojs.github.io/guide/static-blog-from-markdown-files/) in the Mastro Guide.
 
 ### Options
 
@@ -70,9 +77,3 @@ const schema = object({
 });
 const { content, meta } = await markdownToHtml(input, { schema }),
 ```
-
-### Docs
-
-To see all functions `@mastrojs/markdown` exports, see its [API docs](https://jsr.io/@mastrojs/markdown/doc).
-
-For a tutorial, read the following chapter in the Mastro Guide: [A static blog from markdown files](https://mastrojs.github.io/guide/static-blog-from-markdown-files/)
