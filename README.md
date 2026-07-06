@@ -53,22 +53,48 @@ For a tutorial, read the chapter [A static blog from markdown files](https://mas
 
 #### Parse
 
-Use the `parse` option to supply either a [Micromark options object](https://github.com/micromark/micromark/blob/main/packages/micromark/readme.md#options):
+The `parse` option can either take an options object, or a parse function. To supply a [Micromark options object](https://github.com/micromark/micromark/blob/main/packages/micromark/readme.md#options):
 
 ```ts
-markdownToHtml(input, { parse: { allowDangerousHtml: true } });
+const { content, meta } = markdownToHtml(input, { parse: { allowDangerousHtml: true } });
 ```
 
-or a custom markdown-to-HTML function:
+Micromark is fairly basic (e.g. no server-side syntax highlighting of code blocks, but you can use e.g. [microlighter](https://davatron5000.github.io/microlighter/) or [syntaxp](https://github.com/j9t/syntaxp)). If you want a more feature-rich markdown engine, supply a custom markdown-to-HTML function to `parse`, which will be called with the markdown body (YAML frontmatter already stripped).
+
+For example using [markdown-it](https://github.com/markdown-it/markdown-it):
 
 ```ts
+import { markdownToHtml } from "@mastrojs/markdown";
 import markdownIt from "markdown-it";
-markdownToHtml(input, { parse: markdownIt.render });
+
+const { content, meta } = markdownToHtml(input, { parse: markdownIt.render });
+```
+
+Or using [remark-rehype](https://github.com/remarkjs/remark-rehype):
+
+```ts
+import { markdownToHtml } from "@mastrojs/markdown";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeHighlight from "rehype-highlight";
+import rehypeStringify from "rehype-stringify";
+
+const parse = async (markdownText: string) =>
+  String(
+    await unified()
+      .use(remarkParse)
+      .use(remarkRehype)
+      .use(rehypeHighlight)
+      .use(rehypeStringify)
+      .process(markdownText)
+  );
+const { content, meta } = markdownToHtml(input, { parse });
 ```
 
 #### Schema
 
-The default TypeScript type for the YAML metadata is `Record<string, unknown>`, but you can override that with e.g. `readMarkdownFile<{title: string}>("post.md")`. But to actually verify the metadata is correct, you should use a schema. For example using [validate.js](https://github.com/jakelazaroff/validate.js):
+The default TypeScript type for the YAML metadata is `Record<string, unknown>`. You can override that with e.g. `readMarkdownFile<{title: string}>("post.md")`. But to actually verify the metadata is correct, you should use a schema. For example using [validate.js](https://github.com/jakelazaroff/validate.js):
 
 ```ts
 import { object, string } from "./validate.js";
