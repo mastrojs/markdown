@@ -50,6 +50,12 @@ export const markdownToHtml = <M extends DefaultM = DefaultM>(
 ): Promise<Md<M>> => parseMd(md, opts);
 
 /**
+ * Convert a markdown string with no YAML frontmatter to an `Html` node
+ */
+export const markdownPlainToHtml = (md: string, opts?: Parse): Html =>
+  unsafeInnerHtml(micromark(md, { extensions: [gfm()], htmlExtensions: [gfmHtml()], ...opts }));
+
+/**
  * Read a file from the local filesystem and convert its markdown contents
  * to an `Html` node and an object for the metadata.
  */
@@ -159,12 +165,10 @@ const parseMd = async <M extends DefaultM = DefaultM>(
 ) => {
   const { parse, schema } = opts || {};
   const { body, meta } = await parseYamlFrontmatter(md, schema, filePath);
-  const html = typeof parse === "function" ? await parse(body) : micromark(body, {
-    extensions: [gfm()],
-    htmlExtensions: [gfmHtml()],
-    ...parse,
-  });
-  return { content: unsafeInnerHtml(html), meta };
+  const content = typeof parse === "function"
+    ? unsafeInnerHtml(await parse(body))
+    : markdownPlainToHtml(body, parse);
+  return { content, meta };
 };
 
 /**
