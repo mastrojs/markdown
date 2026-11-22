@@ -1,19 +1,8 @@
 {
   "name": "@mastrojs/markdown",
-  "version": "0.2.2",
-  "tasks": {
-    "publish": "deno test && deno publish"
-  },
-  "fmt": {
-    "lineWidth": 100
-  },
+  "version": "0.2.3",
   "exports": {
-    ".": "./markdown.ts"
-  },
-  "imports": {
-    "@mastrojs/mastro": "jsr:@mastrojs/mastro@0",
-    "@std/yaml": "jsr:@std/yaml@^1.1.1",
-    "micromark": "npm:micromark@^4.0.2",
-    "micromark-extension-gfm": "npm:micromark-extension-gfm@^3.0.0"
+    ".": "./index.ts"
   }
 }
+
